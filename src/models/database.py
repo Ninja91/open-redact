@@ -38,8 +38,9 @@ class RemovalRequest(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     broker_name = Column(String, nullable=False)
-    status = Column(RequestStatus, default=RequestStatus.PENDING)
+    status = Column(Enum(RequestStatus), default=RequestStatus.PENDING)
     external_id = Column(String) # ID provided by the broker if any
+    scraped_data = Column(JSON, default={}) # New: Stores what was found (addresses, phones, etc)
     logs = Column(JSON, default=[])
     
     user = relationship("User", back_populates="requests")

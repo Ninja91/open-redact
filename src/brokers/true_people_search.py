@@ -43,16 +43,29 @@ class TruePeopleSearch(BaseBroker):
                 
                 # 3. Click "View Details" then "Remove This Record"
                 view_details = page.locator("a:has-text('View Details')").first
+                findings = {}
                 if await view_details.count() > 0:
                     await view_details.click()
                     await page.wait_for_timeout(2000)
                     
+                    # Extract findings from the details page
+                    try:
+                        findings["addresses"] = await page.locator(".address-section").inner_text()
+                        findings["phones"] = await page.locator(".phone-section").inner_text()
+                    except:
+                        # Fallback to general content if specific selectors fail
+                        findings["raw_details"] = "Record found and accessed."
+
                     remove_btn = page.locator("button:has-text('Remove This Record')")
                     if await remove_btn.count() > 0:
                         await remove_btn.click()
-                        return {"status": "pending", "message": "Removal request sent. Verification email should follow."}
+                        return {
+                            "status": "pending", 
+                            "message": "Removal request sent. Verification email should follow.",
+                            "scraped_data": findings
+                        }
                 
-                return {"status": "completed", "message": "No matching record found to remove."}
+                return {"status": "completed", "message": "No matching record found to remove.", "scraped_data": findings}
 
             except Exception as e:
                 logger.error(f"Error during TruePeopleSearch opt-out: {str(e)}")

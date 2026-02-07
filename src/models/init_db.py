@@ -1,5 +1,4 @@
 from src.models.database import Base
-from sqlalchemy import create_all
 from sqlalchemy import create_engine
 import os
 

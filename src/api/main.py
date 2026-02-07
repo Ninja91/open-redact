@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
-from mcp.server.fastapi import FastMCP
+from mcp.server.fastmcp import FastMCP
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 from src.models.database import Base, User, RemovalRequest, RequestStatus
@@ -53,6 +53,25 @@ async def register_user(full_name: str, email: str, phone: str = None, city: str
         db.close()
 
 @mcp.tool()
+async def get_scraped_data(user_email: str):
+    """View all personal information discovered about you across different data brokers."""
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == user_email).first()
+        if not user:
+            return "User not found."
+        
+        requests = db.query(RemovalRequest).filter(RemovalRequest.user_id == user.id).all()
+        findings = {}
+        for r in requests:
+            if r.scraped_data:
+                findings[r.broker_name] = r.scraped_data
+        
+        return findings if findings else "No data has been scraped yet. Run 'start_removal' first."
+    finally:
+        db.close()
+
+@mcp.tool()
 async def start_removal(user_email: str, broker_name: str):
     """Initiate a removal request for a specific user and broker."""
     db = SessionLocal()
@@ -86,11 +105,14 @@ async def start_removal(user_email: str, broker_name: str):
             broker_name=broker_name,
             status=status_map.get(result.get("status"), RequestStatus.FAILED),
             external_id=result.get("external_id"),
+            scraped_data=result.get("scraped_data", {}),
             logs=[result.get("message") or result.get("error")]
         )
         db.add(request)
         db.commit()
-        return f"Status: {result.get('status')}. Message: {result.get('message') or result.get('error')}"
+        
+        found_data = f" Discovered: {result.get('scraped_data')}" if result.get('scraped_data') else ""
+        return f"Status: {result.get('status')}. Message: {result.get('message') or result.get('error')}.{found_data}"
     finally:
         db.close()
 
@@ -99,4 +121,4 @@ async def root():
     return {"message": "OpenRedact API is running", "database": "connected" if DATABASE_URL else "missing"}
 
 # Hook the MCP server into FastAPI
-app.mount("/mcp", mcp.app)
+app.mount("/mcp", mcp.sse_app())

@@ -34,13 +34,25 @@ class OfficialUSA(BaseBroker):
                 await page.wait_for_timeout(3000)
                 
                 # Look for the removal button in results
-                # Note: Exact selectors depend on their live site structure
+                # Also extract findings
+                findings = {}
+                try:
+                    record = page.locator(".result-card, .person-info").first
+                    if await record.count() > 0:
+                        findings["details"] = await record.inner_text()
+                except:
+                    pass
+
                 remove_link = page.locator("a:has-text('Remove')").first
                 if await remove_link.count() > 0:
                     await remove_link.click()
-                    return {"status": "pending", "message": "Opt-out request submitted. They may send a confirmation email."}
+                    return {
+                        "status": "pending", 
+                        "message": "Opt-out request submitted. They may send a confirmation email.",
+                        "scraped_data": findings
+                    }
                 
-                return {"status": "completed", "message": "No record found on OfficialUSA."}
+                return {"status": "completed", "message": "No record found on OfficialUSA.", "scraped_data": findings}
 
             except Exception as e:
                 logger.error(f"Error during OfficialUSA opt-out: {str(e)}")

@@ -40,24 +40,32 @@ class CyberBackgroundChecks(BaseBroker):
                 if "No records found" in await page.content():
                     return {"status": "completed", "message": "No record found for this email."}
 
-                # Find the first 'Remove' button (usually associated with a record)
+                # Extract findings from the first result card
+                findings = {}
+                try:
+                    name_elem = page.locator(".card-title").first
+                    if await name_elem.count() > 0:
+                        findings["found_name"] = await name_elem.inner_text()
+                    
+                    address_elem = page.locator(".address-data").first
+                    if await address_elem.count() > 0:
+                        findings["found_address"] = await address_elem.inner_text()
+                except:
+                    pass
+
+                # Find the first 'Remove' button
                 remove_button = page.locator("a.btn-remove").first
                 if await remove_button.count() > 0:
                     await remove_button.click()
                     
-                    # 4. Final submission (usually requires solving a CAPTCHA in real life)
-                    # For now, we attempt to fill the final email confirmation if present
-                    confirm_email = page.locator("input#EmailAddress")
-                    if await confirm_email.count() > 0:
-                        await confirm_email.fill(user.email)
-                        # await page.click("button#btnSubmit") # Would trigger CAPTCHA
-                        return {
-                            "status": "pending", 
-                            "message": "Opt-out initiated. Check your email for a confirmation link from CyberBackgroundChecks.",
-                            "external_id": "manual_verification_required"
-                        }
+                    return {
+                        "status": "pending", 
+                        "message": "Opt-out initiated. Check email.",
+                        "external_id": "manual_verification_required",
+                        "scraped_data": findings
+                    }
                 
-                return {"status": "failed", "error": "Could not locate the remove button automatically."}
+                return {"status": "failed", "error": "Could not locate the remove button.", "scraped_data": findings}
 
             except Exception as e:
                 logger.error(f"Error during CyberBackgroundChecks opt-out: {str(e)}")
