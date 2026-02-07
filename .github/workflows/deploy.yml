@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  PROJECT_ID: open-redact-486721
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: us-central1
   SERVICE_NAME: open-redact
 

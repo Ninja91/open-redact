@@ -1,14 +1,17 @@
 # OpenRedact
 
-An open-source, self-hosted personal data removal agent.
+An open-source, self-hosted personal data removal agent. OpenRedact helps you automate the process of requesting data deletion from various data brokers.
 
-## GCP Setup & CI/CD
+## GCP Setup & CI/CD (BYOK Model)
+
+To deploy your own instance of OpenRedact to Google Cloud Run:
 
 ### 1. GitHub Secrets
-To enable automated deployment to Cloud Run, go to your GitHub Repository Settings > Secrets and variables > Actions and add the following:
+Add the following secrets to your GitHub Repository (Settings > Secrets and variables > Actions):
 
-- `GCP_SA_KEY`: The **JSON content** of the service account key for `mainRedactor@open-redact-486721.iam.gserviceaccount.com`.
-- `DATABASE_URL`: Your PostgreSQL connection string (e.g., `postgresql://user:password@host:5432/dbname`).
+- `GCP_PROJECT_ID`: Your Google Cloud Project ID.
+- `GCP_SA_KEY`: The **JSON content** of a Service Account key with `Cloud Run Admin` and `Storage Admin` (for GCR) permissions.
+- `DATABASE_URL`: Your PostgreSQL connection string (e.g., from Neon.tech or Supabase).
 
 ### 2. Local Development
 ```bash
@@ -24,11 +27,5 @@ uvicorn src.api.main:app --reload
 ```
 
 ### 3. MCP Integration (OpenClaw)
-Point your OpenClaw or Gemini CLI to the following endpoint once deployed:
-`https://open-redact-xxxx.a.run.app/mcp/sse`
-
-## Project Structure
-- `src/brokers/`: Scraper implementations for data brokers.
-- `src/models/`: Database schema and ORM.
-- `src/api/`: FastAPI & MCP tool definitions.
-- `SKILL.md`: OpenClaw skill definition.
+Once deployed, point your OpenClaw or Gemini CLI to the following endpoint:
+`https://<your-cloud-run-url>/mcp/sse`
