@@ -7,10 +7,16 @@ from src.brokers.example_broker import ExampleBroker
 from src.brokers.cyber_background_checks import CyberBackgroundChecks
 from src.brokers.official_usa import OfficialUSA
 from src.brokers.true_people_search import TruePeopleSearch
+from dotenv import load_dotenv
 import os
 
+# Load .env file
+load_dotenv()
+
 # Database Setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
