@@ -5,6 +5,8 @@ from sqlalchemy import create_engine
 from src.models.database import Base, User, RemovalRequest, RequestStatus
 from src.brokers.example_broker import ExampleBroker
 from src.brokers.cyber_background_checks import CyberBackgroundChecks
+from src.brokers.official_usa import OfficialUSA
+from src.brokers.true_people_search import TruePeopleSearch
 import os
 
 # Database Setup
@@ -26,18 +28,18 @@ def get_db():
 @mcp.tool()
 async def list_supported_brokers():
     """Returns a list of data brokers currently supported for removal."""
-    return ["ExampleDataBroker", "CyberBackgroundChecks"]
+    return ["ExampleDataBroker", "CyberBackgroundChecks", "OfficialUSA", "TruePeopleSearch"]
 
 @mcp.tool()
-async def register_user(full_name: str, email: str, phone: str = None):
-    """Register a user for data removal tracking."""
+async def register_user(full_name: str, email: str, phone: str = None, city: str = None, state: str = None):
+    """Register a user for data removal tracking. State should be 2-letter code (e.g., NY)."""
     db = SessionLocal()
     try:
         existing_user = db.query(User).filter(User.email == email).first()
         if existing_user:
             return f"User with email {email} is already registered."
         
-        new_user = User(full_name=full_name, email=email, phone=phone)
+        new_user = User(full_name=full_name, email=email, phone=phone, city=city, state=state)
         db.add(new_user)
         db.commit()
         return f"User {full_name} registered successfully."
@@ -55,7 +57,9 @@ async def start_removal(user_email: str, broker_name: str):
         
         brokers = {
             "ExampleDataBroker": ExampleBroker(),
-            "CyberBackgroundChecks": CyberBackgroundChecks()
+            "CyberBackgroundChecks": CyberBackgroundChecks(),
+            "OfficialUSA": OfficialUSA(),
+            "TruePeopleSearch": TruePeopleSearch()
         }
         
         broker = brokers.get(broker_name)
