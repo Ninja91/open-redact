@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 from src.models.database import Base, User, RemovalRequest, RequestStatus
 from src.brokers.example_broker import ExampleBroker
+from src.brokers.cyber_background_checks import CyberBackgroundChecks
 import os
 
 # Database Setup
@@ -25,7 +26,7 @@ def get_db():
 @mcp.tool()
 async def list_supported_brokers():
     """Returns a list of data brokers currently supported for removal."""
-    return ["ExampleDataBroker"]
+    return ["ExampleDataBroker", "CyberBackgroundChecks"]
 
 @mcp.tool()
 async def register_user(full_name: str, email: str, phone: str = None):
@@ -52,22 +53,34 @@ async def start_removal(user_email: str, broker_name: str):
         if not user:
             return "User not found. Please register first."
         
-        # In a real app, we'd lookup the broker class from a registry
-        if broker_name != "ExampleDataBroker":
+        brokers = {
+            "ExampleDataBroker": ExampleBroker(),
+            "CyberBackgroundChecks": CyberBackgroundChecks()
+        }
+        
+        broker = brokers.get(broker_name)
+        if not broker:
             return f"Broker {broker_name} is not supported yet."
             
-        broker = ExampleBroker()
         result = await broker.submit_opt_out(user)
+        
+        status_map = {
+            "submitted": RequestStatus.SUBMITTED,
+            "pending": RequestStatus.PENDING,
+            "completed": RequestStatus.COMPLETED,
+            "failed": RequestStatus.FAILED
+        }
         
         request = RemovalRequest(
             user_id=user.id,
             broker_name=broker_name,
-            status=RequestStatus.SUBMITTED if result["status"] == "submitted" else RequestStatus.FAILED,
-            external_id=result.get("external_id")
+            status=status_map.get(result.get("status"), RequestStatus.FAILED),
+            external_id=result.get("external_id"),
+            logs=[result.get("message") or result.get("error")]
         )
         db.add(request)
         db.commit()
-        return f"Removal request submitted to {broker_name}. Tracking ID: {result.get('external_id')}"
+        return f"Status: {result.get('status')}. Message: {result.get('message') or result.get('error')}"
     finally:
         db.close()
 
